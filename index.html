@@ -130,7 +130,8 @@
         div.className = "image-block";
 
         const preview = document.createElement("img");
-        preview.src = 'https://corsproxy.io/?' + url;  // 프록시 경유 미리보기
+        preview.src = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+  // 프록시 경유 미리보기
 
         const input = document.createElement("input");
         input.value = url;
