@@ -1,135 +1,168 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>Roll20 채팅로그 변환기</title>
+  <title>&lt;Roll20 채팅로그 변환기&gt;</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background-image: url('https://2han20353.github.io/roll20-backup/background.jpg');
-      background-size: cover;
-      background-position: center;
-      color: #333;
-      margin: 0;
-      padding: 2rem;
-    }
-
-    h1 {
-      text-align: center;
-      background: rgba(255, 255, 255, 0.8);
-      padding: 1rem;
-      border-radius: 10px;
-      font-size: 2.5rem;
-      color: #222;
-    }
-
-    #editor, #result, #output {
-      background: rgba(255, 255, 255, 0.95);
-      border: 2px dashed #aaa;
-      padding: 1rem;
-      margin: 1rem auto;
+      font-family: sans-serif;
       max-width: 900px;
+      margin: auto;
+      padding: 2rem;
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-attachment: fixed;
+      background-position: center;
+    }
+    h1 {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 0.7rem 1rem;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    #editor {
+      border: 2px dashed #999;
+      padding: 10px;
       min-height: 300px;
       max-height: 500px;
       overflow: auto;
-      border-radius: 10px;
+      background-color: rgba(255, 255, 255, 0.85);
     }
-
-    .button-group {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-top: 1rem;
-      flex-wrap: wrap;
+    textarea {
+      width: 100%;
+      height: 200px;
     }
-
     button {
-      padding: 1rem 2rem;
-      font-size: 1.1rem;
+      font-size: 1rem;
+      padding: 0.6rem 1.2rem;
+      margin: 1rem 0.5rem 1rem 0;
       border: none;
-      border-radius: 8px;
-      background-color: #ff8c42;
+      border-radius: 6px;
+      background-color: #ff884d;
       color: white;
       cursor: pointer;
-      transition: background-color 0.3s;
     }
-
     button:hover {
       background-color: #ff6f1a;
     }
-
-    h2 {
-      text-align: center;
-      background: rgba(255, 255, 255, 0.7);
-      padding: 0.5rem;
-      border-radius: 6px;
+    .image-block {
+      margin-bottom: 1rem;
+      background: rgba(255,255,255,0.9);
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .image-block img {
+      max-width: 150px;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .image-block input {
+      width: 100%;
+      padding: 5px;
+    }
+    #imageInputs {
+      margin-top: 1rem;
+    }
+    #preview {
+      border: 2px solid #ccc;
+      padding: 10px;
+      max-height: 400px;
+      overflow: auto;
+      background: white;
     }
   </style>
 </head>
 <body>
-  <h1>Roll20 채팅로그 변환기</h1>
+  <h1>&lt;Roll20 채팅로그 변환기&gt;</h1>
+  <p>HTML 채팅 로그를 아래에 붙여넣고, 숨김 메시지를 정리하거나 이미지 링크를 교체하세요.</p>
+  <div id="editor" contenteditable="true"></div>
+  <br />
+  <button onclick="cleanHiddenMessages()">정리하기 (숨김 메시지 제거)</button>
+  <button onclick="replaceImages()">이미지 교체하기</button>
 
-  <div id="editor" contenteditable="true">
-    <!-- 여기에 HTML 채팅 로그를 붙여 넣으세요 -->
-  </div>
+  <div id="imageInputs"></div>
 
-  <div class="button-group">
-    <button onclick="cleanHiddenMessages()">정리하기 (숨김 메시지 제거)</button>
-    <button onclick="replaceImageSources()">이미지 교체하기</button>
-  </div>
+  <h3>결과 미리보기</h3>
+  <div id="preview"></div>
 
-  <h2>결과 미리보기</h2>
-  <div id="result"></div>
-
-  <h2>복사용 HTML 코드</h2>
-  <div id="output" contenteditable="true"></div>
+  <h3>복사용 HTML 코드</h3>
+  <textarea id="output" readonly></textarea>
 
   <script>
     function cleanHiddenMessages() {
       const editor = document.getElementById("editor");
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = editor.innerHTML;
-
-      const elements = tempDiv.querySelectorAll(".message.hidden-message, .message.hidden-message.you");
-      elements.forEach(el => el.remove());
-
-      document.getElementById("result").innerHTML = tempDiv.innerHTML;
-      document.getElementById("output").innerText = tempDiv.innerHTML;
+      const doc = document.createElement("div");
+      doc.innerHTML = editor.innerHTML;
+      const hiddenMessages = doc.querySelectorAll("div.hidden-message");
+      hiddenMessages.forEach(div => div.remove());
+      editor.innerHTML = doc.innerHTML;
+      updatePreview();
     }
 
-    function replaceImageSources() {
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = document.getElementById("result").innerHTML;
+    function replaceImages() {
+      const editor = document.getElementById("editor");
+      const doc = document.createElement("div");
+      doc.innerHTML = editor.innerHTML;
+      const imageInputs = document.getElementById("imageInputs");
+      imageInputs.innerHTML = "";
 
-      const images = tempDiv.querySelectorAll("img");
-      if (images.length === 0) {
-        alert("이미지를 찾을 수 없습니다.");
-        return;
-      }
+      const allElements = [...doc.querySelectorAll("img, [style*='files.d20.io/images']")];
+      const groups = {};
 
-      const originalSrcs = [...new Set([...images].map(img => img.src))];
-      const mapping = {};
-
-      const promptChain = (i = 0) => {
-        if (i >= originalSrcs.length) {
-          images.forEach(img => {
-            if (mapping[img.src]) img.src = mapping[img.src];
-          });
-          document.getElementById("result").innerHTML = tempDiv.innerHTML;
-          document.getElementById("output").innerText = tempDiv.innerHTML;
-          return;
+      allElements.forEach(el => {
+        let url = "";
+        if (el.tagName === "IMG") {
+          url = el.src;
+        } else {
+          const bg = el.style.backgroundImage;
+          const match = bg.match(/url\(["']?(.*?)["']?\)/);
+          if (match) url = match[1];
         }
 
-        const newSrc = prompt(`이미지 주소 교체:
-기존 주소:
-${originalSrcs[i]}
-→ 새 주소 입력:`);
-        if (newSrc !== null) mapping[originalSrcs[i]] = newSrc;
-        promptChain(i + 1);
-      };
+        if (url) {
+          if (!groups[url]) groups[url] = [];
+          groups[url].push(el);
+        }
+      });
 
-      promptChain();
+      Object.keys(groups).forEach(url => {
+        const div = document.createElement("div");
+        div.className = "image-block";
+
+        const preview = document.createElement("img");
+        preview.src = url;
+
+        const input = document.createElement("input");
+        input.value = url;
+        input.placeholder = "새 이미지 주소 입력";
+
+        input.addEventListener("input", () => {
+          const newURL = input.value;
+          preview.src = newURL;
+          groups[url].forEach(el => {
+            if (el.tagName === "IMG") {
+              el.src = newURL;
+            } else {
+              el.style.backgroundImage = `url("${newURL}")`;
+            }
+          });
+          updatePreview(doc.innerHTML);
+        });
+
+        div.appendChild(preview);
+        div.appendChild(input);
+        imageInputs.appendChild(div);
+      });
+
+      editor.innerHTML = doc.innerHTML;
+      updatePreview();
+    }
+
+    function updatePreview(forcedHTML) {
+      const editor = document.getElementById("editor");
+      const html = forcedHTML || editor.innerHTML;
+      document.getElementById("preview").innerHTML = html;
+      document.getElementById("output").value = html;
     }
   </script>
 </body>
